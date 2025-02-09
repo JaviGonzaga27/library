@@ -28,7 +28,35 @@ class Book(models.Model):
         verbose_name = 'Libro'
         verbose_name_plural = 'Libros'
 
+class Book(models.Model):
+    title = models.CharField(max_length=200)
+    author = models.CharField(max_length=200)
+    genre = models.CharField(max_length=100)
+    code = models.CharField(max_length=50, unique=True)
+    status = models.CharField(
+        max_length=20,
+        choices=[
+            ('available', 'Disponible'),
+            ('borrowed', 'En préstamo'),
+            ('lost', 'Perdido'),
+            ('damaged', 'Dañado')
+        ],
+        default='available'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.title} - {self.author}"
+
+    class Meta:
+        verbose_name = 'Libro'
+        verbose_name_plural = 'Libros'
+        ordering = ['title']
+
 class Loan(models.Model):
+    MAX_LOANS = 5  # Constante para el límite máximo de préstamos
+
     book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='loans')
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='loans')
     loan_date = models.DateTimeField(default=timezone.now)
@@ -43,9 +71,23 @@ class Loan(models.Model):
         if self.due_date and self.due_date < timezone.now().date():
             raise ValidationError('La fecha de devolución no puede ser anterior a hoy')
 
+        # Verificar límite de préstamos
+        active_loans = Loan.objects.filter(
+            user=self.user,
+            returned=False
+        ).count()
+        
+        if active_loans >= self.MAX_LOANS and not self.id:
+            raise ValidationError(f'El usuario ha alcanzado el límite de {self.MAX_LOANS} préstamos')
+
     def save(self, *args, **kwargs):
+        self.clean()
         if not self.id:  # Si es un nuevo préstamo
             self.book.status = 'borrowed'
+            self.book.save()
+        elif self.returned and not self.returned_date:
+            self.returned_date = timezone.now()
+            self.book.status = 'available'
             self.book.save()
         super().save(*args, **kwargs)
 
@@ -55,6 +97,7 @@ class Loan(models.Model):
     class Meta:
         verbose_name = 'Préstamo'
         verbose_name_plural = 'Préstamos'
+        ordering = ['-loan_date']
 
 class Reservation(models.Model):
     book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='reservations')
@@ -63,17 +106,15 @@ class Reservation(models.Model):
     active = models.BooleanField(default=True)
 
     def clean(self):
-        # Verificar si el usuario ya tiene una reservación activa para este libro
+        if self.book.status == 'available':
+            raise ValidationError('Este libro está disponible para préstamo directo')
+
         if self.active and Reservation.objects.filter(
             book=self.book,
             user=self.user,
             active=True
-        ).exists() and not self.id:  # Añadido not self.id para permitir actualizaciones
+        ).exists() and not self.id:
             raise ValidationError('Ya tienes una reservación activa para este libro')
-
-        # Verificar si el libro está disponible
-        if self.book.status == 'available':
-            raise ValidationError('Este libro está disponible para préstamo directo')
 
     def save(self, *args, **kwargs):
         self.clean()
@@ -85,6 +126,7 @@ class Reservation(models.Model):
     class Meta:
         verbose_name = 'Reservación'
         verbose_name_plural = 'Reservaciones'
+        ordering = ['-reservation_date']
 
 class Notification(models.Model):
     subject = models.CharField(max_length=200)
@@ -99,3 +141,4 @@ class Notification(models.Model):
     class Meta:
         verbose_name = 'Notificación'
         verbose_name_plural = 'Notificaciones'
+        ordering = ['-created_at']

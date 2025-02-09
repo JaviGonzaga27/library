@@ -16,11 +16,10 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from django.views.generic import RedirectView
+from rest_framework.authtoken import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('apps.biblioteca.urls')),
-    # Redirigir la raíz a /api/
-    path('', RedirectView.as_view(url='/api/', permanent=True)),
+    path('api/token/', views.obtain_auth_token, name='api-token'),
 ]
