@@ -1,8 +1,12 @@
+// src/components/loans/CreateLoanButton.tsx
 'use client';
-
 import { useState, useEffect } from 'react';
 import { createLoan, getUsers, getBooks } from '@/lib/api';
 import { User, Book } from '@/types';
+
+interface CreateLoanButtonProps {
+  onLoanCreated: () => void;
+}
 
 interface FormData {
   book_id: number | '';
@@ -10,16 +14,7 @@ interface FormData {
   due_date: string;
 }
 
-interface ApiError {
-  response?: {
-    data?: {
-      error?: string;
-    };
-  };
-  message: string;
-}
-
-export default function CreateLoanButton() {
+export default function CreateLoanButton({ onLoanCreated }: CreateLoanButtonProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [books, setBooks] = useState<Book[]>([]);
@@ -57,7 +52,6 @@ export default function CreateLoanButton() {
     setError(null);
 
     try {
-      // Validar que los IDs no estén vacíos
       if (formData.book_id === '' || formData.user_id === '') {
         throw new Error('Selecciona un libro y un usuario');
       }
@@ -68,22 +62,12 @@ export default function CreateLoanButton() {
         due_date: formData.due_date
       });
       setIsModalOpen(false);
-      window.location.reload();
-    } catch (err) {
-      const error = err as ApiError;
-      setError(error.response?.data?.error || error.message || 'Error al crear el préstamo');
-      console.error('Error creating loan:', error);
+      onLoanCreated();
+    } catch (err: any) {
+      setError(err.response?.data?.error || err.message || 'Error al crear el préstamo');
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleSelectChange = (
-    e: React.ChangeEvent<HTMLSelectElement>,
-    field: 'book_id' | 'user_id'
-  ) => {
-    const value = e.target.value === '' ? '' : Number(e.target.value);
-    setFormData({ ...formData, [field]: value });
   };
 
   return (
@@ -96,8 +80,8 @@ export default function CreateLoanButton() {
       </button>
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white p-6 rounded-lg w-96">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg w-96 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold">Crear Nuevo Préstamo</h2>
               <button
@@ -121,7 +105,7 @@ export default function CreateLoanButton() {
                 </label>
                 <select
                   value={formData.user_id}
-                  onChange={(e) => handleSelectChange(e, 'user_id')}
+                  onChange={(e) => setFormData({...formData, user_id: e.target.value ? Number(e.target.value) : ''})}
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                   required
                   disabled={loading}
@@ -141,7 +125,7 @@ export default function CreateLoanButton() {
                 </label>
                 <select
                   value={formData.book_id}
-                  onChange={(e) => handleSelectChange(e, 'book_id')}
+                  onChange={(e) => setFormData({...formData, book_id: e.target.value ? Number(e.target.value) : ''})}
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                   required
                   disabled={loading}

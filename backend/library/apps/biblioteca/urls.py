@@ -1,12 +1,10 @@
-# biblioteca/urls.py (URLs de la aplicación)
+# biblioteca/urls.py
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import (
-    BookViewSet, 
-    LoanViewSet, 
-    ReservationViewSet,
-    UserViewSet
-)
+from .views.book_views import BookViewSet
+from .views.loan_views import LoanViewSet
+from .views.reservation_views import ReservationViewSet
+from .views.user_views import UserViewSet
 
 # Crear router y registrar viewsets
 router = DefaultRouter()

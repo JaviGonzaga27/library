@@ -44,3 +44,14 @@ export interface User {
     created_at: string;
     read: boolean;
   }
+
+  // Auth types
+  export interface LoginCredentials {
+    username: string;
+    password: string;
+  }
+  
+  export interface AuthResponse {
+    access: string;  // Django devuelve 'access' en lugar de 'token'
+    refresh: string;
+  }
